@@ -1,44 +1,59 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { Contract } from "ethers";
 
-/**
- * Deploys a contract named "YourContract" using the deployer account and
- * constructor arguments set to the deployer address
- *
- * @param hre HardhatRuntimeEnvironment object.
- */
-const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  /*
-    On localhost, the deployer account is the one that comes with Hardhat, which is already funded.
-
-    When deploying to live networks (e.g `yarn deploy --network sepolia`), the deployer account
-    should have sufficient balance to pay for the gas fees for contract creation.
-
-    You can generate a random account with `yarn generate` or `yarn account:import` to import your
-    existing PK which will fill DEPLOYER_PRIVATE_KEY_ENCRYPTED in the .env file (then used on hardhat.config.ts)
-    You can run the `yarn account` command to check your balance in every network.
-  */
+const deployEquiBlock: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const { deploy } = hre.deployments;
+  const { ethers } = hre;
 
-  await deploy("YourContract", {
+  console.log("🚀 Deploying EquiBlock contracts with deployer:", deployer);
+
+  // 1️⃣ Deploy MockOracle (for fixed price testing)
+  const oracle = await deploy("MockOracle", {
     from: deployer,
-    // Contract constructor arguments
-    args: [deployer],
+    args: [],
     log: true,
-    // autoMine: can be passed to the deploy function to make the deployment process faster on local networks by
-    // automatically mining the contract deployment transaction. There is no effect on live networks.
-    autoMine: true,
   });
+  console.log("✅ MockOracle deployed at:", oracle.address);
 
-  // Get the deployed contract to interact with it after deploying.
-  const yourContract = await hre.ethers.getContract<Contract>("YourContract", deployer);
-  console.log("👋 Initial greeting:", await yourContract.greeting());
+  // 2️⃣ Deploy EquiVault
+  // Replace this with actual PYUSD address when on mainnet/testnet
+  const PYUSD_ADDRESS = "0xE5ed485578d6a646D417002a06823584059FBe31"; // Dummy placeholder for now
+
+  const vault = await deploy("EquiVault", {
+    from: deployer,
+    args: [PYUSD_ADDRESS, oracle.address],
+    log: true,
+  });
+  console.log("✅ EquiVault deployed at:", vault.address);
+
+  // 3️⃣ Deploy EquiAsset
+  const equiAsset = await deploy("EquiAsset", {
+    from: deployer,
+    args: [],
+    log: true,
+  });
+  console.log("✅ EquiAsset deployed at:", equiAsset.address);
+
+  // 4️⃣ Link EquiAsset with Vault
+  const vaultContract = await ethers.getContractAt("EquiVault", vault.address);
+  const tx = await vaultContract.setEquiAsset(equiAsset.address);
+  await tx.wait();
+  console.log("🔗 EquiAsset linked to Vault successfully");
+
+  // 5️⃣ Link Vault in EquiAsset
+  const equiAssetContract = await ethers.getContractAt("EquiAsset", equiAsset.address);
+  const tx2 = await equiAssetContract.setVault(vault.address);
+  await tx2.wait();
+  console.log("🔗 Vault linked in EquiAsset successfully");
+
+  console.log("🎯 Deployment complete!");
+  console.log({
+    MockOracle: oracle.address,
+    EquiVault: vault.address,
+    EquiAsset: equiAsset.address,
+  });
 };
 
-export default deployYourContract;
-
-// Tags are useful if you have multiple deploy files and only want to run one of them.
-// e.g. yarn deploy --tags YourContract
-deployYourContract.tags = ["YourContract"];
+export default deployEquiBlock;
+deployEquiBlock.tags = ["EquiBlock"];
