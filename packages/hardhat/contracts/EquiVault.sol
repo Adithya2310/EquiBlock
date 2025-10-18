@@ -48,7 +48,8 @@ contract EquiVault is Ownable {
         require(amountToMint > 0, "Invalid mint amount");
 
         uint256 assetPrice = oracle.getPrice(); // In USD, e.g., 100 * 1e18
-        uint256 requiredCollateral = (amountToMint * assetPrice * COLLATERAL_RATIO) / (100 * ASSET_DECIMAL);
+        uint256 totalDebtAfter = userDebt[msg.sender] + amountToMint;
+        uint256 requiredCollateral = (totalDebtAfter * assetPrice * COLLATERAL_RATIO) / (100 * ASSET_DECIMAL);
 
         require(
             userCollateral[msg.sender] >= requiredCollateral,
