@@ -89,8 +89,7 @@ contract EquiVault is Ownable {
 
         uint256 assetPrice = oracle.getPrice();
         uint256 debtValue = (userDebt[user] * assetPrice) / ASSET_DECIMAL;
-
-        return (userCollateral[user]) / debtValue;
+        return (userCollateral[user] * 1e18) / debtValue;
     }
 
     // --------------------------
