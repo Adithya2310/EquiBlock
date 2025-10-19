@@ -12,18 +12,18 @@ describe("EquiVault full integration test", function () {
         const MockPyUSD = await ethers.getContractFactory("MockPyUSD");
         const initialSupply = ethers.parseUnits("1000000", 6); // 1,000,000 pyUSD
         pyUSD = await MockPyUSD.deploy();
-        await pyUSD.waitForDeployment?.();
+
 
         // Deploy oracle and set price = 100 * 1e18 (e.g. $100)
         const MockOracle = await ethers.getContractFactory("MockOracle");
         oracle = await MockOracle.deploy();
-        await oracle.waitForDeployment?.();
+
         await oracle.setPrice(ethers.parseUnits("100", 18));
 
         // Deploy EquiAsset
         const EquiAsset = await ethers.getContractFactory("EquiAsset");
         equiAsset = await EquiAsset.deploy();
-        await equiAsset.waitForDeployment?.();
+
 
         // Deploy Vault
         const EquiVault = await ethers.getContractFactory("EquiVault");
@@ -31,8 +31,6 @@ describe("EquiVault full integration test", function () {
             pyUSD.target ?? pyUSD.address,
             oracle.target ?? oracle.address
         );
-        await vault.waitForDeployment?.();
-
         // Connect vault <-> asset
         await vault.setEquiAsset(equiAsset.target ?? equiAsset.address);
         await equiAsset.setVault(vault.target ?? vault.address);
