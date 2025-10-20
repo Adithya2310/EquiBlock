@@ -19,19 +19,17 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@master
 
-      - name: Setup Node.js and Yarn v1
+      - name: Setup node env
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node }}
-          cache: 'yarn'
-      - run: corepack disable  # ensures Yarn v3 (Berry) is NOT used
-      - run: npm install -g yarn@1.22.19  # install stable Yarn v1
+          cache: yarn
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
+        run: yarn install --immutable
+      
       - name: Run hardhat node, deploy contracts (& generate contracts typescript output)
         run: yarn chain & yarn deploy
 
