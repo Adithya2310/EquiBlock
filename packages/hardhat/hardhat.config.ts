@@ -11,6 +11,7 @@ import "hardhat-deploy";
 import "hardhat-deploy-ethers";
 import { task } from "hardhat/config";
 import generateTsAbis from "./scripts/generateTsAbis";
+import * as fs from "fs";
 
 // If not set, it uses ours Alchemy's default API key.
 // You can get your own at https://dashboard.alchemyapi.io
@@ -146,8 +147,10 @@ const config: HardhatUserConfig = {
 task("deploy").setAction(async (args, hre, runSuper) => {
   // Run the original deploy task
   await runSuper(args);
-  // Force run the generateTsAbis script
-  await generateTsAbis(hre);
+  // Only run generateTsAbis if deployments directory exists
+  if (fs.existsSync("./deployments")) {
+    await generateTsAbis(hre);
+  }
 });
 
 export default config;
