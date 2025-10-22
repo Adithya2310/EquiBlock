@@ -119,8 +119,8 @@ const MintBurn: NextPage = () => {
 
     try {
       const amountToMint = parseEther(mintAmount);
-      // const collateralRequired = calculateCollateralRequired(mintAmount);
-      const collateralRequiredPYUSD = parseUnits("5", 6);
+      const collateralRequired = calculateCollateralRequired(mintAmount);
+      const collateralRequiredPYUSD = parseUnits(collateralRequired, 6);
 
       notification.info("Step 1/3: Approving PYUSD...");
 
