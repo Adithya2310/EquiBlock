@@ -76,8 +76,8 @@ const Docs: NextPage = () => {
                 <div>
                   <h3 className="text-xl font-semibold mb-2 text-primary">1. Deposit Collateral</h3>
                   <p className="text-white/70 leading-relaxed">
-                    Users deposit PYUSD as collateral into our secure smart contracts. The collateral ratio is set at
-                    150% to ensure system stability and protect against price volatility.
+                    Users deposit PYUSD as collateral into our secure smart contracts. The initial collateral ratio is set at
+                    500% to ensure system stability and protect against price volatility. The liquidation threshold is 150%.
                   </p>
                 </div>
                 <div>
