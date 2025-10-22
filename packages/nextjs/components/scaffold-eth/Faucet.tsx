@@ -81,10 +81,10 @@ export const Faucet = () => {
 
   return (
     <div>
-      <label htmlFor="faucet-modal" className="btn btn-primary btn-sm font-normal gap-1">
+      {/* <label htmlFor="faucet-modal" className="btn btn-primary btn-sm font-normal gap-1">
         <BanknotesIcon className="h-4 w-4" />
         <span>Faucet</span>
-      </label>
+      </label> */}
       <input type="checkbox" id="faucet-modal" className="modal-toggle" />
       <label htmlFor="faucet-modal" className="modal cursor-pointer">
         <label className="modal-box relative">

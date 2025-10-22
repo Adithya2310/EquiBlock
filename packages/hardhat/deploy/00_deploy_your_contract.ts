@@ -18,7 +18,7 @@ const deployEquiBlock: DeployFunction = async function (hre: HardhatRuntimeEnvir
 
   // 2️⃣ Deploy EquiVault
   // Replace this with actual PYUSD address when on mainnet/testnet
-  const PYUSD_ADDRESS = "0xE5ed485578d6a646D417002a06823584059FBe31"; // Dummy placeholder for now
+  const PYUSD_ADDRESS = "0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9"; // Dummy placeholder for now
 
   const vault = await deploy("EquiVault", {
     from: deployer,

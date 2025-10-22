@@ -10,7 +10,7 @@ describe("EquiVault full integration test", function () {
   let pyUSD: Contract, oracle: MockOracle, equiAsset: EquiAsset, vault: EquiVault;
 
   beforeEach(async function () {
-    [, user] = await ethers.getSigners();
+    [user] = await ethers.getSigners();
 
     // Deploy mock stablecoin (6 decimals)
     const MockPyUSD = await ethers.getContractFactory("MockPyUSD");
