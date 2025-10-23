@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import type { NextPage } from "next";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { formatUnits, parseUnits } from "viem";
+import { useAccount } from "wagmi";
+import { ExclamationTriangleIcon, MagnifyingGlassIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { useDeployedContractInfo, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
 const assets = [
-  { symbol: "eAAPL", name: "Apple Inc.", price: 172.25, change: 2.5, changeAmount: 4.21 },
+  { symbol: "eTCS", name: "Tata Consultancy Services Ltd.", price: 172.25, change: 2.5, changeAmount: 4.21 },
   { symbol: "eTSLA", name: "Tesla Inc.", price: 384.62, change: -1.2, changeAmount: -4.67 },
   { symbol: "eGOOG", name: "Google", price: 370.37, change: 0.8, changeAmount: 2.94 },
   { symbol: "eAMZN", name: "Amazon", price: 142.86, change: 1.5, changeAmount: 2.11 },
@@ -15,26 +18,179 @@ const assets = [
 const timeframes = ["1H", "4H", "1D", "1W", "1M"];
 
 const orderHistory = [
-  { date: "2023-10-27 14:30", asset: "eAAPL", type: "Buy", amount: "10.5 eAAPL", price: "$170.15" },
+  { date: "2023-10-27 14:30", asset: "eTCS", type: "Buy", amount: "10.5 eTCS", price: "$170.15" },
   { date: "2023-10-26 09:15", asset: "eTSLA", type: "Sell", amount: "5.0 eTSLA", price: "$210.45" },
   { date: "2023-10-25 11:00", asset: "eGOOG", type: "Buy", amount: "2.1 eGOOG", price: "$135.20" },
-  { date: "2023-10-24 16:45", asset: "eAAPL", type: "Sell", amount: "20.0 eAAPL", price: "$172.50" },
+  { date: "2023-10-24 16:45", asset: "eTCS", type: "Sell", amount: "20.0 eTCS", price: "$172.50" },
   { date: "2023-10-23 10:05", asset: "eMSFT", type: "Buy", amount: "15.0 eMSFT", price: "$330.60" },
 ];
 
 const Trade: NextPage = () => {
+  const { address } = useAccount();
   const [selectedAsset] = useState(assets[0]);
   const [activeTimeframe, setActiveTimeframe] = useState("4H");
   const [activeTab, setActiveTab] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showLiquidityModal, setShowLiquidityModal] = useState(false);
+  const [liquidityPyUSD, setLiquidityPyUSD] = useState("");
+  const [liquidityAsset, setLiquidityAsset] = useState("");
+  const [isSwapping, setIsSwapping] = useState(false);
+
+  // Get contract addresses dynamically
+  const { data: equiPoolInfo } = useDeployedContractInfo("EquiPool");
+  // const { data: equiAssetInfo } = useDeployedContractInfo("EquiAsset");
+
+  // Read pool reserves
+  const { data: reserves } = useScaffoldReadContract({
+    contractName: "EquiPool",
+    functionName: "getReserves",
+  });
+
+  // Read oracle price
+  const { data: oraclePrice } = useScaffoldReadContract({
+    contractName: "EquiPool",
+    functionName: "getOraclePrice",
+  });
+
+  // Read user PYUSD balance
+  const { data: pyUSDBalance } = useScaffoldReadContract({
+    contractName: "PYUSD",
+    functionName: "balanceOf",
+    args: [address],
+  });
+
+  // Read user EquiAsset balance
+  const { data: assetBalance } = useScaffoldReadContract({
+    contractName: "EquiAsset",
+    functionName: "balanceOf",
+    args: [address],
+  });
+
+  // Write hooks
+  const { writeContractAsync: writePoolAsync } = useScaffoldWriteContract({ contractName: "EquiPool" });
+  const { writeContractAsync: writePyUSDAsync } = useScaffoldWriteContract({ contractName: "PYUSD" });
+  const { writeContractAsync: writeAssetAsync } = useScaffoldWriteContract({ contractName: "EquiAsset" });
+
+  // Parse contract data
+  const pyUSDReserve = reserves ? Number(formatUnits(reserves[0], 6)) : 0;
+  const assetReserve = reserves ? Number(formatUnits(reserves[1], 18)) : 0;
+  const userPyUSD = pyUSDBalance ? Number(formatUnits(pyUSDBalance, 6)) : 0;
+  const userAsset = assetBalance ? Number(formatUnits(assetBalance, 18)) : 0;
+  const currentPrice = oraclePrice ? Number(formatUnits(oraclePrice, 18)) : 100;
 
   const calculateEstimated = (amount: string) => {
     const numAmount = parseFloat(amount) || 0;
     if (activeTab === "buy") {
-      return (numAmount / selectedAsset.price).toFixed(4);
+      // Buying asset with PYUSD
+      return (numAmount / currentPrice).toFixed(6);
     } else {
-      return (numAmount * selectedAsset.price).toFixed(2);
+      // Selling asset for PYUSD
+      return (numAmount * currentPrice).toFixed(2);
+    }
+  };
+
+  const hasEnoughLiquidity = () => {
+    const numAmount = parseFloat(amount) || 0;
+    if (activeTab === "buy") {
+      const assetOut = numAmount / currentPrice;
+      return assetOut <= assetReserve;
+    } else {
+      const pyUSDOut = numAmount * currentPrice;
+      return pyUSDOut <= pyUSDReserve;
+    }
+  };
+
+  const handleAddLiquidity = async () => {
+    if (!liquidityPyUSD || !liquidityAsset || !equiPoolInfo?.address) return;
+
+    try {
+      const pyUSDAmount = parseUnits(liquidityPyUSD, 6);
+      const assetAmount = parseUnits(liquidityAsset, 18);
+
+      console.log("Adding liquidity:", {
+        pyUSDAmount: pyUSDAmount.toString(),
+        assetAmount: assetAmount.toString(),
+        poolAddress: equiPoolInfo.address,
+      });
+
+      // 1. Approve PYUSD
+      await writePyUSDAsync({
+        functionName: "approve",
+        args: [equiPoolInfo.address, pyUSDAmount],
+      });
+
+      // 2. Approve Asset
+      await writeAssetAsync({
+        functionName: "approve",
+        args: [equiPoolInfo.address, assetAmount],
+      });
+
+      // 3. Add liquidity
+      await writePoolAsync({
+        functionName: "addLiquidity",
+        args: [pyUSDAmount, assetAmount],
+      });
+
+      setShowLiquidityModal(false);
+      setLiquidityPyUSD("");
+      setLiquidityAsset("");
+    } catch (error) {
+      console.error("Error adding liquidity:", error);
+      alert(`Failed to add liquidity: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
+  const handleSwap = async () => {
+    if (!amount || isSwapping || !equiPoolInfo?.address) return;
+
+    try {
+      setIsSwapping(true);
+
+      console.log("Swapping:", { amount, activeTab, poolAddress: equiPoolInfo.address });
+
+      if (activeTab === "buy") {
+        // Swap PYUSD for Asset
+        const pyUSDAmount = parseUnits(amount, 6);
+
+        console.log("Buying asset with PYUSD:", pyUSDAmount.toString());
+
+        // Approve PYUSD
+        await writePyUSDAsync({
+          functionName: "approve",
+          args: [equiPoolInfo.address, pyUSDAmount],
+        });
+
+        // Swap
+        await writePoolAsync({
+          functionName: "swapPYUSDForAsset",
+          args: [pyUSDAmount],
+        });
+      } else {
+        // Swap Asset for PYUSD
+        const assetAmount = parseUnits(amount, 18);
+
+        console.log("Selling asset for PYUSD:", assetAmount.toString());
+
+        // Approve Asset
+        await writeAssetAsync({
+          functionName: "approve",
+          args: [equiPoolInfo.address, assetAmount],
+        });
+
+        // Swap
+        await writePoolAsync({
+          functionName: "swapAssetForPYUSD",
+          args: [assetAmount],
+        });
+      }
+
+      setAmount("");
+    } catch (error) {
+      console.error("Error swapping:", error);
+      alert(`Swap failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsSwapping(false);
     }
   };
 
@@ -52,16 +208,32 @@ const Trade: NextPage = () => {
           {/* Asset Header */}
           <div className="card-glass p-6 mb-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
+              <div className="flex-1">
                 <h1 className="text-4xl font-bold mb-2">{selectedAsset.symbol}</h1>
                 <p className="text-white/50">{selectedAsset.name}</p>
               </div>
               <div className="text-left md:text-right">
-                <p className="text-4xl font-bold mb-1">${selectedAsset.price}</p>
-                <p className={`text-lg ${selectedAsset.change >= 0 ? "text-success" : "text-error"}`}>
-                  {selectedAsset.change >= 0 ? "+" : ""}
-                  {selectedAsset.change}% ({selectedAsset.change >= 0 ? "+" : ""}${selectedAsset.changeAmount} in last
-                  24h)
+                <p className="text-4xl font-bold mb-1">${currentPrice.toFixed(2)}</p>
+                <p className="text-sm text-white/50">Oracle Price</p>
+              </div>
+              <button onClick={() => setShowLiquidityModal(true)} className="btn btn-primary gap-2 flex items-center">
+                <PlusIcon className="w-5 h-5" />
+                Add Liquidity
+              </button>
+            </div>
+
+            {/* Pool Stats */}
+            <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/10">
+              <div>
+                <p className="text-sm text-white/50 mb-1">PYUSD Reserve</p>
+                <p className="text-xl font-bold">
+                  {pyUSDReserve.toLocaleString(undefined, { maximumFractionDigits: 2 })} PYUSD
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-white/50 mb-1">Asset Reserve</p>
+                <p className="text-xl font-bold">
+                  {assetReserve.toLocaleString(undefined, { maximumFractionDigits: 4 })} {selectedAsset.symbol}
                 </p>
               </div>
             </div>
@@ -155,9 +327,28 @@ const Trade: NextPage = () => {
                     </span>
                   </div>
                   <p className="text-xs text-white/50 mt-2">
-                    Available: {activeTab === "buy" ? "1,500.00 PYUSD" : "10.5 " + selectedAsset.symbol}
+                    Available:{" "}
+                    {activeTab === "buy"
+                      ? `${userPyUSD.toFixed(2)} PYUSD`
+                      : `${userAsset.toFixed(4)} ${selectedAsset.symbol}`}
                   </p>
                 </div>
+
+                {/* Liquidity Warning */}
+                {amount && !hasEnoughLiquidity() && (
+                  <div className="mb-4 p-3 bg-error/10 border border-error/30 rounded-lg flex items-start gap-2">
+                    <ExclamationTriangleIcon className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-error font-medium mb-2">Insufficient Pool Liquidity</p>
+                      <button
+                        onClick={() => setShowLiquidityModal(true)}
+                        className="text-xs text-error underline hover:no-underline"
+                      >
+                        Add liquidity to enable this swap
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Estimated Receive */}
                 <div className="mb-6">
@@ -177,13 +368,15 @@ const Trade: NextPage = () => {
 
                 {/* Action Button */}
                 <button
-                  className={`w-full py-4 rounded-lg font-semibold text-white text-lg transition-all ${
+                  onClick={handleSwap}
+                  disabled={!amount || !hasEnoughLiquidity() || isSwapping}
+                  className={`w-full py-4 rounded-lg font-semibold text-white text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                     activeTab === "buy"
                       ? "bg-success hover:bg-success/90 shadow-lg shadow-success/30"
                       : "bg-error hover:bg-error/90 shadow-lg shadow-error/30"
                   }`}
                 >
-                  {activeTab === "buy" ? "Buy" : "Sell"} {selectedAsset.symbol}
+                  {isSwapping ? "Processing..." : `${activeTab === "buy" ? "Buy" : "Sell"} ${selectedAsset.symbol}`}
                 </button>
               </div>
             </div>
@@ -238,6 +431,72 @@ const Trade: NextPage = () => {
               </table>
             </div>
           </div>
+
+          {/* Add Liquidity Modal */}
+          {showLiquidityModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+              <div className="card-glass p-6 max-w-md w-full">
+                <h2 className="text-2xl font-bold mb-6">Add Liquidity</h2>
+
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-white/70 mb-2">PYUSD Amount</label>
+                    <input
+                      type="number"
+                      value={liquidityPyUSD}
+                      onChange={e => setLiquidityPyUSD(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full bg-base-300 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+                    />
+                    <p className="text-xs text-white/50 mt-1">Available: {userPyUSD.toFixed(2)} PYUSD</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-white/70 mb-2">
+                      {selectedAsset.symbol} Amount
+                    </label>
+                    <input
+                      type="number"
+                      value={liquidityAsset}
+                      onChange={e => setLiquidityAsset(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full bg-base-300 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+                    />
+                    <p className="text-xs text-white/50 mt-1">
+                      Available: {userAsset.toFixed(4)} {selectedAsset.symbol}
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
+                    <p className="text-sm text-white/70">
+                      <span className="font-medium">Note:</span> You can provide any ratio of PYUSD to{" "}
+                      {selectedAsset.symbol}. The pool uses oracle pricing for swaps.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowLiquidityModal(false);
+                      setLiquidityPyUSD("");
+                      setLiquidityAsset("");
+                    }}
+                    className="flex-1 py-3 rounded-lg font-semibold bg-base-300 text-white hover:bg-base-300/70 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddLiquidity}
+                    disabled={!liquidityPyUSD || !liquidityAsset}
+                    className="flex-1 py-3 rounded-lg font-semibold bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add Liquidity
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
