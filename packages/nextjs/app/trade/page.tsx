@@ -8,7 +8,7 @@ import { ExclamationTriangleIcon, MagnifyingGlassIcon, PlusIcon } from "@heroico
 import { useDeployedContractInfo, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
 const assets = [
-  { symbol: "eAAPL", name: "Apple Inc.", price: 172.25, change: 2.5, changeAmount: 4.21 },
+  { symbol: "eTCS", name: "Tata Consultancy Services Ltd.", price: 172.25, change: 2.5, changeAmount: 4.21 },
   { symbol: "eTSLA", name: "Tesla Inc.", price: 384.62, change: -1.2, changeAmount: -4.67 },
   { symbol: "eGOOG", name: "Google", price: 370.37, change: 0.8, changeAmount: 2.94 },
   { symbol: "eAMZN", name: "Amazon", price: 142.86, change: 1.5, changeAmount: 2.11 },
@@ -18,10 +18,10 @@ const assets = [
 const timeframes = ["1H", "4H", "1D", "1W", "1M"];
 
 const orderHistory = [
-  { date: "2023-10-27 14:30", asset: "eAAPL", type: "Buy", amount: "10.5 eAAPL", price: "$170.15" },
+  { date: "2023-10-27 14:30", asset: "eTCS", type: "Buy", amount: "10.5 eTCS", price: "$170.15" },
   { date: "2023-10-26 09:15", asset: "eTSLA", type: "Sell", amount: "5.0 eTSLA", price: "$210.45" },
   { date: "2023-10-25 11:00", asset: "eGOOG", type: "Buy", amount: "2.1 eGOOG", price: "$135.20" },
-  { date: "2023-10-24 16:45", asset: "eAAPL", type: "Sell", amount: "20.0 eAAPL", price: "$172.50" },
+  { date: "2023-10-24 16:45", asset: "eTCS", type: "Sell", amount: "20.0 eTCS", price: "$172.50" },
   { date: "2023-10-23 10:05", asset: "eMSFT", type: "Buy", amount: "15.0 eMSFT", price: "$330.60" },
 ];
 

@@ -6,7 +6,7 @@ import { useAccount } from "wagmi";
 import { ArrowsRightLeftIcon, FireIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
 
 const portfolioAssets = [
-  { symbol: "eAAPL", units: 10.5, price: 142.86, totalValue: 1500.0, logo: "eAAPL" },
+  { symbol: "eTCS", units: 10.5, price: 142.86, totalValue: 1500.0, logo: "eTCS" },
   { symbol: "eTSLA", units: 5.2, price: 384.62, totalValue: 2000.0, logo: "eTSLA" },
   { symbol: "eGOOG", units: 8.1, price: 370.37, totalValue: 3000.0, logo: "eGOOG" },
   { symbol: "eAMZN", units: 3.7, price: 675.68, totalValue: 2500.0, logo: "eAMZN" },
@@ -15,8 +15,8 @@ const portfolioAssets = [
 const recentActivity = [
   {
     type: "mint",
-    asset: "eAAPL",
-    amount: "+5.0 eAAPL",
+    asset: "eTCS",
+    amount: "+5.0 eTCS",
     value: "+$714.30",
     time: "2 hours ago",
     icon: PlusCircleIcon,
@@ -52,7 +52,7 @@ const recentActivity = [
 ];
 
 const vaultDetails = [
-  { asset: "eAAPL", collateral: "$2,250.00", debt: "$1,500.00", ratio: "150%", status: "Safe" },
+  { asset: "eTCS", collateral: "$2,250.00", debt: "$1,500.00", ratio: "150%", status: "Safe" },
   { asset: "eTSLA", collateral: "$3,000.00", debt: "$2,000.00", ratio: "150%", status: "Safe" },
   { asset: "eGOOG", collateral: "$4,500.00", debt: "$3,000.00", ratio: "150%", status: "Safe" },
   { asset: "eAMZN", collateral: "$3,750.00", debt: "$2,500.00", ratio: "150%", status: "Safe" },
