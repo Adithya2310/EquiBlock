@@ -13,7 +13,6 @@ contract EquiVault is Ownable {
 
     uint256 public constant COLLATERAL_RATIO = 500; // 500%
     uint256 public constant LIQUIDATION_THRESHOLD = 150; // 150%
-    uint256 public constant LIQUIDATION_BONUS = 10; // 10% bonus for liquidator
     uint256 public constant ASSET_DECIMAL = 1e18;
     uint256 public constant USD_DECIMAL = 1e6;             
 
@@ -115,59 +114,35 @@ contract EquiVault is Ownable {
     // --------------------------
     // 6. LIQUIDATION FUNCTION
     // --------------------------
-    /**
-     * @notice Liquidate an undercollateralized position
-     * @param user The address of the user to liquidate
-     * @param amountToBurn The amount of eTCS to burn (debt to repay)
-     * 
-     * How it works:
-     * 1. Liquidator must own eTCS tokens (bought from market or minted)
-     * 2. Liquidator burns eTCS to pay off user's debt
-     * 3. Liquidator receives user's collateral + 10% bonus
-     * 4. User's position is partially or fully liquidated
-     */
-    function liquidate(address user, uint256 amountToBurn) external {
-        require(user != address(0), "Invalid user address");
-        require(amountToBurn > 0, "Invalid amount");
-        require(isLiquidatable(user), "Position is not liquidatable");
-        require(userDebt[user] >= amountToBurn, "Amount exceeds user debt");
+    function liquidate(address user) external {
+        require(isLiquidatable(user), "User is not liquidatable");
+        require(userDebt[user] > 0, "No debt to liquidate");
 
         uint256 assetPrice = oracle.getPrice();
-        
-        // Calculate the USD value of debt being repaid
-        uint256 debtValueRepaid = (amountToBurn * assetPrice) / ASSET_DECIMAL;
-        
-        // Calculate collateral to seize (debt value + liquidation bonus)
-        // Liquidator gets 110% of the debt value they're repaying
-        uint256 collateralToSeize = (debtValueRepaid * (100 + LIQUIDATION_BONUS)) / 100;
-        
-        // Ensure we don't seize more collateral than the user has
-        if (collateralToSeize > userCollateral[user]) {
-            collateralToSeize = userCollateral[user];
-            // In this case, adjust amountToBurn to match available collateral
-            // This prevents over-liquidation
-            uint256 maxDebtValue = (collateralToSeize * 100) / (100 + LIQUIDATION_BONUS);
-            amountToBurn = (maxDebtValue * ASSET_DECIMAL) / assetPrice;
-            
-            // Ensure we don't burn more than user's debt
-            if (amountToBurn > userDebt[user]) {
-                amountToBurn = userDebt[user];
-            }
-        }
-        
-        // Burn eTCS tokens from the liquidator
-        equiAsset.burn(msg.sender, amountToBurn);
-        
-        // Update user's position
-        userDebt[user] -= amountToBurn;
-        userCollateral[user] -= collateralToSeize;
-        
-        // Transfer collateral to liquidator (denormalize from 18 to 6 decimals)
-        uint256 denormalizedCollateral = collateralToSeize / 1e12;
-        pyUSD.transfer(msg.sender, denormalizedCollateral);
-        
-        emit Liquidated(user, msg.sender, amountToBurn, collateralToSeize);
+        uint256 debtAmount = userDebt[user];
+        uint256 debtValueInUSD = (debtAmount * assetPrice) / ASSET_DECIMAL; // in USD (1e18)
+        uint256 debtValueInPYUSD = debtValueInUSD / 1e12; // normalize from 18→6 decimals
+
+        // 🔹 Step 1: Liquidator deposits PYUSD equivalent to the oracle value of user's debt
+        pyUSD.transferFrom(msg.sender, address(this), debtValueInPYUSD);
+
+        // 🔹 Step 2: Seize Alice's collateral (entire amount)
+        uint256 collateralToSeize = userCollateral[user];
+        uint256 collateralToSeizeDenorm = collateralToSeize / 1e12; // convert 18→6 decimals
+
+        require(collateralToSeizeDenorm > 0, "No collateral");
+
+        // Transfer Alice's collateral to the liquidator
+        pyUSD.transfer(msg.sender, collateralToSeizeDenorm);
+
+        // 🔹 Step 3: Clear Alice's debt
+        userCollateral[user] = 0;
+        userDebt[user] = 0;
+
+        emit Liquidated(user, msg.sender, debtAmount, collateralToSeize);
     }
+
+
 
     // --------------------------
     // 7. View Functions
@@ -186,28 +161,5 @@ contract EquiVault is Ownable {
         debt = userDebt[user];
         collateralRatio = getCollateralRatio(user);
         liquidatable = isLiquidatable(user);
-    }
-
-    /**
-     * @notice Calculate liquidation bonus for a given amount
-     */
-    function calculateLiquidationBonus(address user, uint256 amountToBurn) 
-        external 
-        view 
-        returns (uint256 collateralToSeize, uint256 bonusAmount) 
-    {
-        require(amountToBurn <= userDebt[user], "Amount exceeds debt");
-        
-        uint256 assetPrice = oracle.getPrice();
-        uint256 debtValueRepaid = (amountToBurn * assetPrice) / ASSET_DECIMAL;
-        
-        collateralToSeize = (debtValueRepaid * (100 + LIQUIDATION_BONUS)) / 100;
-        bonusAmount = (debtValueRepaid * LIQUIDATION_BONUS) / 100;
-        
-        // Cap at available collateral
-        if (collateralToSeize > userCollateral[user]) {
-            collateralToSeize = userCollateral[user];
-            bonusAmount = collateralToSeize - debtValueRepaid;
-        }
     }
 }

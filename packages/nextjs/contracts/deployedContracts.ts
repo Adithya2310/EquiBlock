@@ -1013,7 +1013,7 @@ const deployedContracts = {
   },
   11155111: {
     EquiAsset: {
-      address: "0x6FB7b29Ebff34E6Ac6cc5454e91B3b51626f801F",
+      address: "0xD714EB5d494d9A0A283512f96FdF773e93c8d559",
       abi: [
         {
           inputs: [],
@@ -1479,10 +1479,10 @@ const deployedContracts = {
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",
       },
-      deployedOnBlock: 9472995,
+      deployedOnBlock: 9483392,
     },
     EquiPool: {
-      address: "0x6318b0F6510Ef30b874AF0439d39f6F2550d5b1b",
+      address: "0x1c127ad0D63c25B3eF17B2f8c806ae86d036Fa2e",
       abi: [
         {
           inputs: [
@@ -1769,10 +1769,10 @@ const deployedContracts = {
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",
       },
-      deployedOnBlock: 9472998,
+      deployedOnBlock: 9483395,
     },
     EquiVault: {
-      address: "0x17aC6D8A5162D7A7e569DA311dF3Ee35E2fE40A1",
+      address: "0x5cB49a8fEfaB8F0ac85D84bD5B7A87ccE236C6ef",
       abi: [
         {
           inputs: [
@@ -1947,19 +1947,6 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "LIQUIDATION_BONUS",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
           name: "LIQUIDATION_THRESHOLD",
           outputs: [
             {
@@ -1995,35 +1982,6 @@ const deployedContracts = {
           name: "burnEquiAsset",
           outputs: [],
           stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "user",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "amountToBurn",
-              type: "uint256",
-            },
-          ],
-          name: "calculateLiquidationBonus",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "collateralToSeize",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "bonusAmount",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
           type: "function",
         },
         {
@@ -2130,11 +2088,6 @@ const deployedContracts = {
               internalType: "address",
               name: "user",
               type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "amountToBurn",
-              type: "uint256",
             },
           ],
           name: "liquidate",
@@ -2271,10 +2224,10 @@ const deployedContracts = {
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",
       },
-      deployedOnBlock: 9472994,
+      deployedOnBlock: 9483391,
     },
     MockOracle: {
-      address: "0x4cBe2Cc418b42302cB639D8c5917F65a6aeeC509",
+      address: "0x30AfC6D19Be03456f8b94B1936C9c27B891Bc2Fb",
       abi: [
         {
           inputs: [],
@@ -2304,7 +2257,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 9472993,
+      deployedOnBlock: 9483390,
     },
   },
 } as const;
