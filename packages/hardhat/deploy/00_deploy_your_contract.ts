@@ -7,14 +7,15 @@ const deployEquiBlock: DeployFunction = async function (hre: HardhatRuntimeEnvir
   const { ethers } = hre;
 
   console.log("🚀 Deploying EquiBlock contracts with deployer:", deployer);
-
-  // 1️⃣ Deploy MockOracle (for fixed price testing)
-  const oracle = await deploy("MockOracle", {
+  const PYTH_ETH_SEPOLIA_ADDRESS="0xDd24F84d36BF92C65F92307595335bdFab5Bbd21"
+  const ASSET_ID="0x4ec77ff732418ba9ffc3385c6f67108df6ce7295484be028861362c13142647c"
+  // 1️⃣ Deploy PythOracle (for fixed price testing)
+  const oracle = await deploy("PythOracle", {
     from: deployer,
-    args: [],
+    args: [PYTH_ETH_SEPOLIA_ADDRESS, ASSET_ID],
     log: true,
   });
-  console.log("✅ MockOracle deployed at:", oracle.address);
+  console.log("✅ PythOracle deployed at:", oracle.address);
 
   // 2️⃣ Deploy EquiVault
   // Replace this with actual PYUSD address when on mainnet/testnet
@@ -58,7 +59,7 @@ const deployEquiBlock: DeployFunction = async function (hre: HardhatRuntimeEnvir
 
   console.log("🎯 Deployment complete!");
   console.log({
-    MockOracle: oracle.address,
+    PythOracle: oracle.address,
     PyUSD: PYUSD_ADDRESS,
     EquiVault: vault.address,
     EquiAsset: equiAsset.address,

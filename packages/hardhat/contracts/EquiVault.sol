@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import "./EquiAsset.sol";
-import "./MockOracle.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
