@@ -3,12 +3,13 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./MockOracle.sol";
+import "./PythOracle.sol";
+
 
 contract EquiPool is Ownable {
     IERC20 public pyUSD;        // PYUSD stablecoin (6 decimals)
     IERC20 public equiAsset;    // EquiAsset (18 decimals)
-    MockOracle public oracle;   // Oracle providing price of 1 EquiAsset in USD
+    PythOracle public oracle;   // Oracle providing price of 1 EquiAsset in USD
 
     uint256 public constant USD_DECIMALS = 1e6;  // PYUSD decimals
     uint256 public constant ASSET_DECIMALS = 1e18; // EquiAsset decimals
@@ -19,7 +20,7 @@ contract EquiPool is Ownable {
     constructor(address _pyUSD, address _equiAsset, address _oracle) Ownable(msg.sender) {
         pyUSD = IERC20(_pyUSD);
         equiAsset = IERC20(_equiAsset);
-        oracle = MockOracle(_oracle);
+        oracle = PythOracle(_oracle);
     }
 
     // -----------------------
@@ -54,7 +55,7 @@ contract EquiPool is Ownable {
     function swapPYUSDForAsset(uint256 amountPYUSDIn) external {
         require(amountPYUSDIn > 0, "Invalid amount");
 
-        uint256 price = oracle.getPrice(); // e.g., 1 eTCS = 100 * 1e18 USD
+        uint256 price = oracle.getPrice(); // 1 eCORECPIIndex price in USD (1e18)
         // Correct conversion
         uint256 assetOut = (amountPYUSDIn * ASSET_DECIMALS * 1e18) / price / USD_DECIMALS;
 
@@ -74,7 +75,7 @@ contract EquiPool is Ownable {
     function swapAssetForPYUSD(uint256 amountAssetIn) external {
         require(amountAssetIn > 0, "Invalid amount");
 
-        uint256 price = oracle.getPrice(); // e.g., 1 eTCS = 100 * 1e18 USD
+        uint256 price = oracle.getPrice(); // 1 eCORECPIIndex price in USD (1e18)
         // Convert eAsset (18 decimals) → USD → PYUSD (6 decimals)
         uint256 pyUSDOut = (amountAssetIn * price * USD_DECIMALS) / (ASSET_DECIMALS * 1e18);
 

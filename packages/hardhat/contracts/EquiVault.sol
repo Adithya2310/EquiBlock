@@ -2,14 +2,14 @@
 pragma solidity ^0.8.20;
 
 import "./EquiAsset.sol";
-import "./MockOracle.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./PythOracle.sol";
 
 contract EquiVault is Ownable {
     IERC20 public pyUSD;               // Collateral token
-    EquiAsset public equiAsset;        // Synthetic asset (eTCS)
-    MockOracle public oracle;          // Mock price oracle
+    EquiAsset public equiAsset;        // Synthetic asset (eCORECPIIndex)
+    PythOracle public oracle;          // Mock price oracle
 
     uint256 public constant COLLATERAL_RATIO = 500; // 500%
     uint256 public constant LIQUIDATION_THRESHOLD = 150; // 150%
@@ -26,7 +26,7 @@ contract EquiVault is Ownable {
 
     constructor(address _pyUSD, address _oracle) Ownable(msg.sender) {
         pyUSD = IERC20(_pyUSD);
-        oracle = MockOracle(_oracle);
+        oracle = PythOracle(_oracle);
     }
 
     // Link EquiAsset contract after deployment
@@ -48,7 +48,7 @@ contract EquiVault is Ownable {
     }
 
     // --------------------------
-    // 2. Mint EquiAsset (eTCS)
+    // 2. Mint EquiAsset (eCORECPIIndex)
     // --------------------------
     function mintEquiAsset(uint256 amountToMint) external {
         require(amountToMint > 0, "Invalid mint amount");

@@ -1,29 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { NextPage } from "next";
-import { formatUnits, parseUnits } from "viem";
-import { useAccount } from "wagmi";
+import { formatUnits, parseEther, parseUnits } from "viem";
+import { useAccount, usePublicClient } from "wagmi";
 import { ExclamationTriangleIcon, MagnifyingGlassIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useDeployedContractInfo, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { notification } from "~~/utils/scaffold-eth";
 
 const assets = [
-  { symbol: "eTCS", name: "Tata Consultancy Services Ltd.", price: 172.25, change: 2.5, changeAmount: 4.21 },
-  { symbol: "eTSLA", name: "Tesla Inc.", price: 384.62, change: -1.2, changeAmount: -4.67 },
-  { symbol: "eGOOG", name: "Google", price: 370.37, change: 0.8, changeAmount: 2.94 },
-  { symbol: "eAMZN", name: "Amazon", price: 142.86, change: 1.5, changeAmount: 2.11 },
-  { symbol: "eMSFT", name: "Microsoft", price: 330.6, change: -0.3, changeAmount: -0.99 },
+  {
+    symbol: "eCORECPIIndex",
+    name: "United States Core Consumer Price Index",
+    price: 172.25,
+    change: 2.5,
+    changeAmount: 4.21,
+  },
 ];
 
 const timeframes = ["1H", "4H", "1D", "1W", "1M"];
 
-const orderHistory = [
-  { date: "2023-10-27 14:30", asset: "eTCS", type: "Buy", amount: "10.5 eTCS", price: "$170.15" },
-  { date: "2023-10-26 09:15", asset: "eTSLA", type: "Sell", amount: "5.0 eTSLA", price: "$210.45" },
-  { date: "2023-10-25 11:00", asset: "eGOOG", type: "Buy", amount: "2.1 eGOOG", price: "$135.20" },
-  { date: "2023-10-24 16:45", asset: "eTCS", type: "Sell", amount: "20.0 eTCS", price: "$172.50" },
-  { date: "2023-10-23 10:05", asset: "eMSFT", type: "Buy", amount: "15.0 eMSFT", price: "$330.60" },
-];
+type Order = { date: string; asset: string; type: "Buy" | "Sell"; amount: string; price: string };
+const orderHistory: Order[] = [];
 
 const Trade: NextPage = () => {
   const { address } = useAccount();
@@ -37,6 +35,69 @@ const Trade: NextPage = () => {
   const [liquidityAsset, setLiquidityAsset] = useState("");
   const [isSwapping, setIsSwapping] = useState(false);
 
+  // Hermes / Pyth configuration
+  const PYTH_PRICE_ID: `0x${string}` = "0x4ec77ff732418ba9ffc3385c6f67108df6ce7295484be028861362c13142647c";
+  const HERMES_BASE_URL = "https://hermes.pyth.network";
+
+  // const [hermesPriceWei, setHermesPriceWei] = useState<bigint | null>(null);
+  const [hermesPrice, setHermesPrice] = useState<number>(0);
+
+  const fetchHermesPriceUpdate = async (): Promise<`0x${string}`[]> => {
+    const url = `${HERMES_BASE_URL}/v2/updates/price/latest?ids[]=${PYTH_PRICE_ID}&encoding=hex`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Hermes request failed (${res.status})`);
+    const body = await res.json();
+    let updates: string[] | undefined = body?.binary?.data || body?.data?.binary?.data;
+    if (!updates && Array.isArray(body?.updates)) {
+      updates = body.updates
+        .map((u: any) => u?.binary?.data || u?.update?.data || u?.vaa || u?.updateData)
+        .flat()
+        .filter(Boolean);
+    }
+    if (!updates || updates.length === 0) throw new Error("No price updates returned by Hermes");
+    return updates.map((u: string) => (u.startsWith("0x") ? (u as `0x${string}`) : (("0x" + u) as `0x${string}`)));
+  };
+
+  // Fetch numeric price from Hermes; scale to 1e18 for internal calculations and keep number for display
+  const fetchHermesNumericPrice = async () => {
+    const url = `${HERMES_BASE_URL}/v2/updates/price/latest?ids[]=${PYTH_PRICE_ID}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Hermes price request failed (${res.status})`);
+    const body = await res.json();
+    // robust extraction supporting example: { parsed: [ { price, ema_price } ] }
+    const priceNode =
+      (Array.isArray(body?.parsed) && body.parsed[0]) ||
+      (Array.isArray(body?.prices) && body.prices[0]) ||
+      (Array.isArray(body?.priceFeeds) && body.priceFeeds[0]) ||
+      null;
+    const p = priceNode?.price?.price ?? priceNode?.ema_price?.price;
+    const expo = priceNode?.price?.expo ?? priceNode?.ema_price?.expo;
+    if (p === undefined || expo === undefined) throw new Error("Malformed Hermes price response");
+    const priceInt = BigInt(typeof p === "string" ? p : p.toString());
+    const expNum: number = Number(expo);
+    // const power = expNum + 18; // scale to 1e18
+    // let scaled: bigint;
+    // if (power >= 0) scaled = priceInt * (10n ** BigInt(power));
+    // else scaled = priceInt / (10n ** BigInt(-power));
+    // setHermesPriceWei(scaled);
+    // numeric for UI
+    const floatVal = Number(priceInt) * Math.pow(10, expNum);
+    setHermesPrice(floatVal);
+  };
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        await fetchHermesNumericPrice();
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    run();
+    const id = setInterval(run, 20000);
+    return () => clearInterval(id);
+  }, []);
+
   // Get contract addresses dynamically
   const { data: equiPoolInfo } = useDeployedContractInfo("EquiPool");
   // const { data: equiAssetInfo } = useDeployedContractInfo("EquiAsset");
@@ -47,11 +108,7 @@ const Trade: NextPage = () => {
     functionName: "getReserves",
   });
 
-  // Read oracle price
-  const { data: oraclePrice } = useScaffoldReadContract({
-    contractName: "EquiPool",
-    functionName: "getOraclePrice",
-  });
+  // No on-chain oracle read for display; we show Hermes price directly
 
   // Read user PYUSD balance
   const { data: pyUSDBalance } = useScaffoldReadContract({
@@ -69,6 +126,8 @@ const Trade: NextPage = () => {
 
   // Write hooks
   const { writeContractAsync: writePoolAsync } = useScaffoldWriteContract({ contractName: "EquiPool" });
+  const { writeContractAsync: writeOracleAsync } = useScaffoldWriteContract({ contractName: "PythOracle" });
+  const publicClient = usePublicClient();
   const { writeContractAsync: writePyUSDAsync } = useScaffoldWriteContract({ contractName: "PYUSD" });
   const { writeContractAsync: writeAssetAsync } = useScaffoldWriteContract({ contractName: "EquiAsset" });
 
@@ -77,7 +136,7 @@ const Trade: NextPage = () => {
   const assetReserve = reserves ? Number(formatUnits(reserves[1], 18)) : 0;
   const userPyUSD = pyUSDBalance ? Number(formatUnits(pyUSDBalance, 6)) : 0;
   const userAsset = assetBalance ? Number(formatUnits(assetBalance, 18)) : 0;
-  const currentPrice = oraclePrice ? Number(formatUnits(oraclePrice, 18)) : 100;
+  const currentPrice = hermesPrice;
 
   const calculateEstimated = (amount: string) => {
     const numAmount = parseFloat(amount) || 0;
@@ -105,6 +164,18 @@ const Trade: NextPage = () => {
     if (!liquidityPyUSD || !liquidityAsset || !equiPoolInfo?.address) return;
 
     try {
+      // Update oracle via Hermes before liquidity to align pool pricing
+      const updates = await fetchHermesPriceUpdate();
+      const updateHash = await writeOracleAsync({
+        functionName: "UpdateAndGetPrice",
+        args: [updates],
+        value: parseEther("0.003"),
+      });
+      if (publicClient && updateHash) {
+        try {
+          await publicClient.waitForTransactionReceipt({ hash: updateHash as `0x${string}` });
+        } catch {}
+      }
       const pyUSDAmount = parseUnits(liquidityPyUSD, 6);
       const assetAmount = parseUnits(liquidityAsset, 18);
 
@@ -146,6 +217,19 @@ const Trade: NextPage = () => {
 
     try {
       setIsSwapping(true);
+      // Update oracle via Hermes before swap
+      notification.info("Updating oracle price...");
+      const updates = await fetchHermesPriceUpdate();
+      const updateHash = await writeOracleAsync({
+        functionName: "UpdateAndGetPrice",
+        args: [updates],
+        value: parseEther("0.003"),
+      });
+      if (publicClient && updateHash) {
+        try {
+          await publicClient.waitForTransactionReceipt({ hash: updateHash as `0x${string}` });
+        } catch {}
+      }
 
       console.log("Swapping:", { amount, activeTab, poolAddress: equiPoolInfo.address });
 

@@ -61,7 +61,7 @@ describe("EquiVault full integration test", function () {
     await (pyUSD as any).connect(user).approve(vault, amount);
     await vault.connect(user).depositCollateral(amount);
 
-    const tooMuch = ethers.parseUnits("1", 18); // 1 eTCS
+    const tooMuch = ethers.parseUnits("1", 18); // 1 eCORECPIIndex
     await expect(vault.connect(user).mintEquiAsset(tooMuch)).to.be.revertedWith("Not enough collateral");
   });
 
