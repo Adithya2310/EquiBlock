@@ -1013,7 +1013,7 @@ const deployedContracts = {
   },
   11155111: {
     EquiAsset: {
-      address: "0xD714EB5d494d9A0A283512f96FdF773e93c8d559",
+      address: "0x52ffC282dd621f18edD1aeba5557bE839d0793f9",
       abi: [
         {
           inputs: [],
@@ -1479,10 +1479,10 @@ const deployedContracts = {
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",
       },
-      deployedOnBlock: 9483392,
+      deployedOnBlock: 9492420,
     },
     EquiPool: {
-      address: "0x1c127ad0D63c25B3eF17B2f8c806ae86d036Fa2e",
+      address: "0x054EA4a22CD6e9ef5024dd9AB5564BBC623012a4",
       abi: [
         {
           inputs: [
@@ -1652,7 +1652,7 @@ const deployedContracts = {
           name: "oracle",
           outputs: [
             {
-              internalType: "contract MockOracle",
+              internalType: "contract PythOracle",
               name: "",
               type: "address",
             },
@@ -1769,10 +1769,10 @@ const deployedContracts = {
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",
       },
-      deployedOnBlock: 9483395,
+      deployedOnBlock: 9492423,
     },
     EquiVault: {
-      address: "0x5cB49a8fEfaB8F0ac85D84bD5B7A87ccE236C6ef",
+      address: "0x1cFeB1A2F739f49C25bc6A1F00d9E8659A26d0e6",
       abi: [
         {
           inputs: [
@@ -2113,7 +2113,7 @@ const deployedContracts = {
           name: "oracle",
           outputs: [
             {
-              internalType: "contract MockOracle",
+              internalType: "contract PythOracle",
               name: "",
               type: "address",
             },
@@ -2224,11 +2224,46 @@ const deployedContracts = {
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",
       },
-      deployedOnBlock: 9483391,
+      deployedOnBlock: 9492419,
     },
-    MockOracle: {
-      address: "0x30AfC6D19Be03456f8b94B1936C9c27B891Bc2Fb",
+    PythOracle: {
+      address: "0x418651ffC70fEE535299b9d62153638643d31fa3",
       abi: [
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_pyth",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "_priceId",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes[]",
+              name: "pythPriceUpdate",
+              type: "bytes[]",
+            },
+          ],
+          name: "UpdateAndGetPrice",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "payable",
+          type: "function",
+        },
         {
           inputs: [],
           name: "getPrice",
@@ -2245,19 +2280,19 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint256",
-              name: "_newPrice",
-              type: "uint256",
+              internalType: "bytes[]",
+              name: "pythPriceUpdate",
+              type: "bytes[]",
             },
           ],
-          name: "setPrice",
+          name: "updatePrice",
           outputs: [],
-          stateMutability: "nonpayable",
+          stateMutability: "payable",
           type: "function",
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 9483390,
+      deployedOnBlock: 9492418,
     },
   },
 } as const;

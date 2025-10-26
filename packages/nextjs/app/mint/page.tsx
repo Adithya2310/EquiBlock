@@ -29,7 +29,7 @@ const MintBurn: NextPage = () => {
 
   // Read oracle price
   const { data: oraclePrice } = useScaffoldReadContract({
-    contractName: "MockOracle",
+    contractName: "PythOracle",
     functionName: "getPrice",
     watch: true,
   });
