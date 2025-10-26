@@ -1,17 +1,17 @@
 # EquiBlock 🌍
 
-> Trade global stocks without the hassle
-Ever wanted to invest in Japanese stocks or other international markets but got stopped by complicated paperwork, high fees, or geographic restrictions? EquiBlock makes it simple.
+> Trade global equities without the hassle
+Ever wanted to invest in Japanese equities or other international markets but got stopped by complicated paperwork, high fees, or geographic restrictions? EquiBlock makes it simple.
 
-We let you create and trade **EquiAssets** — digital tokens that follow the prices of real-world stocks like the Nikkei index. Think of them as digital twins of actual stocks that you can buy and sell 24/7, right from your crypto wallet. No banks, no brokers, no borders.
+We let you create and trade **EquiAssets** — digital tokens that follow the prices of real-world equities like the Nikkei index. Think of them as digital twins of actual equities that you can buy and sell 24/7, right from your crypto wallet. No banks, no brokers, no borders.
 
 ---
 
 ## 🚀 What Makes EquiBlock Special?
 
-- **Create Digital Stock Tokens**: Turn your crypto into tokens that track real stock prices
+- **Create Digital Equity Equities**: Turn your crypto into tokens that track real equity prices
 - **Your Money is Safe**: Every token is backed by 5x its value in PYUSD (a stable dollar-pegged coin), so you're protected even if prices swing wildly
-- **Always Up-to-Date**: We use Pyth oracles — think of them as super reliable price reporters that constantly check stock prices
+- **Always Up-to-Date**: We use Pyth oracles — think of them as super reliable price reporters that constantly check equity prices
 - **Trade Directly with Others**: No middlemen taking cuts or controlling your trades
 - **Access from Anywhere**: Whether you're in Tokyo, New York, or anywhere else, you can trade
 - **Smart Protection System**: Our Vincent system watches over everything to make sure the platform stays healthy and your investments are safe
@@ -22,33 +22,33 @@ We let you create and trade **EquiAssets** — digital tokens that follow the pr
 ## 🏗️ How Does It Work?
 
 ### 1. **Creating Your EquiAssets**
-Think of it like putting down a deposit. You put in PYUSD (a stablecoin), and we create tokens that follow stock prices. We ask for 5x the value as collateral — so if you want $100 worth of Nikkei tokens, you deposit $500. This keeps everything super safe.
+Think of it like putting down a deposit. You put in PYUSD (a stablecoin), and we create tokens that follow equity prices. We ask for 5x the value as collateral — so if you want $100 worth of Nikkei tokens, you deposit $500. This keeps everything super safe.
 
 ```
 Put in PYUSD → Get EquiAssets → Trade them anytime
 ```
 
 ### 2. **Getting Real Prices**
-We use something called Pyth Network — it's like having thousands of reliable sources constantly checking stock prices and agreeing on the correct number. This means your EquiAssets always reflect the real market price.
+We use something called Pyth Network — it's like having thousands of reliable sources constantly checking equity prices and agreeing on the correct number. This means your EquiAssets always reflect the real market price.
 
 ### 3. **Staying Safe**
 Our Vincent system is like a watchful guardian. It constantly checks everyone's accounts to make sure they have enough collateral. If someone's account gets too risky, the system automatically fixes it before it can cause problems for anyone else.
 
 ### 4. **Trading**
-Once you have EquiAssets, you can trade them with other users anytime you want. It's like having a global stock exchange that never closes.
+Once you have EquiAssets, you can trade them with other users anytime you want. It's like having a global equity exchange that never closes.
 
 ---
 
-## 💡 EquiBlock vs Traditional Stock Trading
+## 💡 EquiBlock vs Traditional Equity Trading
 
-| Old Way (Traditional Brokers) | New Way (EquiBlock) |
-|--------------------------------|---------------------|
-| Only available in certain countries | Access from anywhere in the world |
-| Pay high fees to brokers | Minimal fees |
-| Can only trade during business hours | Trade 24/7, even on weekends |
-| Lots of paperwork and verification | Just connect your wallet and go |
-| Your broker holds your assets | You control everything |
-| Wait days for transactions to clear | Everything happens instantly |
+| Old Way (Traditional Brokers)        | New Way (EquiBlock)               |
+| ------------------------------------ | --------------------------------- |
+| Only available in certain countries  | Access from anywhere in the world |
+| Pay high fees to brokers             | Minimal fees                      |
+| Can only trade during business hours | Trade 24/7, even on weekends      |
+| Lots of paperwork and verification   | Just connect your wallet and go   |
+| Your broker holds your assets        | You control everything            |
+| Wait days for transactions to clear  | Everything happens instantly      |
 
 ---
 
@@ -108,7 +108,7 @@ npm start
 
 1. Connect your wallet (click the "Connect Wallet" button)
 2. Deposit PYUSD — remember, you need 5x what you want to create (so $500 for $100 worth of tokens)
-3. Choose which stock you want to track (like Nikkei index)
+3. Choose which equity you want to track (like Nikkei index)
 4. Click confirm and approve the transaction in your wallet
 5. Done! Your EquiAssets will show up in your wallet
 
@@ -131,7 +131,7 @@ npm start
 <!-- ## 🎯 What You Can Trade
 
 Right now, we support:
-- **Nikkei Index** - Track Japan's biggest stock market
+- **Nikkei Index** - Track Japan's biggest equity market
 
 We're working on adding more markets soon — stay tuned!
 
@@ -159,21 +159,9 @@ This project is licensed under the [MIT License](LICENSE) - see the LICENSE file
 
 ## 🔗 Links
 
-- **Website**: [Coming Soon]
-- **Documentation**: [Coming Soon]
-- **Twitter**: [Coming Soon]
-- **Discord**: [Coming Soon]
+- **Website**: [https://equiblock.vercel.app/](https://equiblock.vercel.app/)
 
 ---
 
-## 📞 Need Help?
-
-Got questions or running into issues?
-- Open an issue here on GitHub
-- Join our Discord community (coming soon)
-- Send us an email: [Your contact email]
-
----
 
 **Built with ❤️ by the EquiBlock Team**
-Footer
