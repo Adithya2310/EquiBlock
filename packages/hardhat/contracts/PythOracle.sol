@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 
-contract PriceFeed {
+contract PythOracle {
     IPyth pyth;
     bytes32 priceId;
 
