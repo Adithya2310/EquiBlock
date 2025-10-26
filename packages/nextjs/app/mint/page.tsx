@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { NextPage } from "next";
-import { formatEther, formatUnits, parseEther, parseUnits } from "viem";
-import { useAccount } from "wagmi";
+import { formatEther, formatUnits, parseEther } from "viem";
+import { useAccount, usePublicClient } from "wagmi";
 import { FireIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
 import { useDeployedContractInfo, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
@@ -15,9 +15,14 @@ const MintBurn: NextPage = () => {
   const [burnAmount, setBurnAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Hermes / Pyth configuration
+  const PYTH_PRICE_ID: `0x${string}` = "0x4ec77ff732418ba9ffc3385c6f67108df6ce7295484be028861362c13142647c"; // ECO.US.CORECPIINDEX
+  const HERMES_BASE_URL = "https://hermes.pyth.network";
+
   // Get vault address
   const { data: vaultInfo } = useDeployedContractInfo({ contractName: "EquiVault" as const });
   const vaultAddress = vaultInfo?.address;
+  // const { data: oracleInfo } = useDeployedContractInfo({ contractName: "PythOracle" as const });
 
   // Read user's position from the vault
   const { data: userPosition, refetch: refetchPosition } = useScaffoldReadContract({
@@ -27,12 +32,9 @@ const MintBurn: NextPage = () => {
     watch: true,
   });
 
-  // Read oracle price
-  const { data: oraclePrice } = useScaffoldReadContract({
-    contractName: "PythOracle",
-    functionName: "getPrice",
-    watch: true,
-  });
+  // Hermes numeric price (read-only for display & calculations)
+  const [hermesPriceWei, setHermesPriceWei] = useState<bigint | null>(null);
+  const [hermesPrice, setHermesPrice] = useState<number>(0);
 
   // Read user's EquiAsset balance
   const { data: equiAssetBalance, refetch: refetchBalance } = useScaffoldReadContract({
@@ -53,14 +55,85 @@ const MintBurn: NextPage = () => {
   // Write contracts
   const { writeContractAsync: writeVaultAsync } = useScaffoldWriteContract({ contractName: "EquiVault" });
   const { writeContractAsync: writePYUSDAsync } = useScaffoldWriteContract({ contractName: "PYUSD" });
+  const { writeContractAsync: writeOracleAsync } = useScaffoldWriteContract({ contractName: "PythOracle" });
+  const publicClient = usePublicClient();
+
+  // Fetch latest Pyth price update from Hermes and return bytes[] payload for EVM
+  const fetchHermesPriceUpdate = async (): Promise<`0x${string}`[]> => {
+    const url = `${HERMES_BASE_URL}/v2/updates/price/latest?ids[]=${PYTH_PRICE_ID}&encoding=hex`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Hermes request failed (${res.status})`);
+    const body = await res.json();
+
+    // Try common response shapes
+    const updates: string[] | undefined =
+      body?.binary?.data ||
+      body?.data?.binary?.data ||
+      (Array.isArray(body?.updates)
+        ? body.updates
+            .map((u: any) => u?.binary?.data || u?.update?.data || u?.vaa || u?.updateData)
+            .flat()
+            .filter(Boolean)
+        : undefined);
+
+    if (!updates || updates.length === 0) throw new Error("No price updates returned by Hermes");
+
+    const hexUpdates = updates.map((u: string) =>
+      u.startsWith("0x") ? (u as `0x${string}`) : (("0x" + u) as `0x${string}`),
+    );
+    return hexUpdates as `0x${string}`[];
+  };
+
+  // Fetch numeric price from Hermes (not on-chain); result scaled to 1e18 for calculations
+  const fetchHermesNumericPrice = async () => {
+    const url = `${HERMES_BASE_URL}/v2/updates/price/latest?ids[]=${PYTH_PRICE_ID}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Hermes price request failed (${res.status})`);
+    const body = await res.json();
+    // robust extraction supporting example: { parsed: [ { price, ema_price } ] }
+    const priceNode =
+      (Array.isArray(body?.parsed) && body.parsed[0]) ||
+      (Array.isArray(body?.prices) && body.prices[0]) ||
+      (Array.isArray(body?.priceFeeds) && body.priceFeeds[0]) ||
+      null;
+    const p = priceNode?.price?.price ?? priceNode?.ema_price?.price;
+    const expo = priceNode?.price?.expo ?? priceNode?.ema_price?.expo;
+    if (p === undefined || expo === undefined) throw new Error("Malformed Hermes price response");
+    const priceInt = BigInt(typeof p === "string" ? p : p.toString());
+    const expNum: number = Number(expo);
+    const power = expNum + 18; // scale to 1e18
+    let scaled: bigint;
+    if (power >= 0) scaled = priceInt * 10n ** BigInt(power);
+    else scaled = priceInt / 10n ** BigInt(-power);
+    setHermesPriceWei(scaled);
+    // numeric for UI
+    const floatVal = Number(priceInt) * Math.pow(10, expNum);
+    setHermesPrice(floatVal);
+  };
+
+  // Poll Hermes price periodically
+  useEffect(() => {
+    const run = async () => {
+      try {
+        await fetchHermesNumericPrice();
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    run();
+    const id = setInterval(run, 20000);
+    return () => {
+      clearInterval(id);
+    };
+  }, []);
 
   // Calculate collateral required for minting
   // Formula from contract: requiredCollateral = (amountToMint * assetPrice * COLLATERAL_RATIO) / (100 * ASSET_DECIMAL)
   const calculateCollateralRequired = (amountToMint: string) => {
-    if (!amountToMint || !oraclePrice) return "0";
+    if (!amountToMint || !hermesPriceWei) return "0";
     try {
       const mintAmountWei = parseEther(amountToMint); // 18 decimals
-      const price = BigInt(oraclePrice.toString()); // 18 decimals (e.g., 100 * 1e18)
+      const price = hermesPriceWei; // 18 decimals
       const COLLATERAL_RATIO = BigInt(500);
       const ASSET_DECIMAL = parseEther("1");
 
@@ -79,10 +152,10 @@ const MintBurn: NextPage = () => {
   // Calculate PYUSD to redeem when burning
   // Formula from contract: collateralReleased = (amountToBurn * assetPrice * COLLATERAL_RATIO) / (100 * ASSET_DECIMAL)
   const calculateRedemption = (amountToBurn: string) => {
-    if (!amountToBurn || !oraclePrice) return "0";
+    if (!amountToBurn || !hermesPriceWei) return "0";
     try {
       const burnAmountWei = parseEther(amountToBurn);
-      const price = BigInt(oraclePrice.toString());
+      const price = hermesPriceWei;
       const COLLATERAL_RATIO = BigInt(500);
       const ASSET_DECIMAL = parseEther("1");
 
@@ -118,9 +191,30 @@ const MintBurn: NextPage = () => {
     setIsProcessing(true);
 
     try {
+      // Step 0: Update oracle with latest Pyth price via Hermes
+      notification.info("Step 0/3: Updating oracle price...");
+      const updates = await fetchHermesPriceUpdate();
+      const updateHash = await writeOracleAsync({
+        functionName: "UpdateAndGetPrice",
+        args: [updates],
+        value: parseEther("0.003"),
+      });
+      // wait for oracle update to be mined, then refetch latest price
+      if (publicClient && updateHash) {
+        try {
+          await publicClient.waitForTransactionReceipt({ hash: updateHash as `0x${string}` });
+        } catch {}
+      }
       const amountToMint = parseEther(mintAmount);
-      const collateralRequired = calculateCollateralRequired(mintAmount);
-      const collateralRequiredPYUSD = parseUnits(collateralRequired, 6);
+      // Recalculate collateral with the updated price (fallback to existing if needed)
+      if (!hermesPriceWei) {
+        notification.error("Hermes price not available. Please try again.");
+        setIsProcessing(false);
+        return;
+      }
+      const priceBI = hermesPriceWei;
+      const requiredNormalized = (amountToMint * priceBI * BigInt(500)) / (BigInt(100) * parseEther("1"));
+      const collateralRequiredPYUSD = requiredNormalized / BigInt(1e12);
 
       notification.info("Step 1/3: Approving PYUSD...");
 
@@ -141,7 +235,7 @@ const MintBurn: NextPage = () => {
       });
 
       notification.success("Collateral deposited!");
-      notification.info("Step 3/3: Minting eTCS...");
+      notification.info("Step 3/3: Minting eCORECPIIndex...");
 
       // Step 3: Mint EquiAsset
       await writeVaultAsync({
@@ -149,7 +243,7 @@ const MintBurn: NextPage = () => {
         args: [amountToMint],
       });
 
-      notification.success(`Successfully minted ${mintAmount} eTCS!`);
+      notification.success(`Successfully minted ${mintAmount} eCORECPIIndex!`);
       setMintAmount("");
 
       // Refetch balances
@@ -179,16 +273,30 @@ const MintBurn: NextPage = () => {
     setIsProcessing(true);
 
     try {
+      // Step 0: Update oracle with latest Pyth price via Hermes
+      notification.info("Updating oracle price...");
+      const updates = await fetchHermesPriceUpdate();
+      const updateHash = await writeOracleAsync({
+        functionName: "UpdateAndGetPrice",
+        args: [updates],
+        value: parseEther("0.003"),
+      });
+      if (publicClient && updateHash) {
+        try {
+          await publicClient.waitForTransactionReceipt({ hash: updateHash as `0x${string}` });
+        } catch {}
+      }
+
       const amountToBurn = parseEther(burnAmount);
 
-      notification.info("Burning eTCS...");
+      notification.info("Burning eCORECPIIndex...");
 
       await writeVaultAsync({
         functionName: "burnEquiAsset",
         args: [amountToBurn],
       });
 
-      notification.success(`Successfully burned ${burnAmount} eTCS!`);
+      notification.success(`Successfully burned ${burnAmount} eCORECPIIndex!`);
       setBurnAmount("");
 
       // Refetch balances
@@ -210,7 +318,7 @@ const MintBurn: NextPage = () => {
     userPosition && userPosition[2] !== BigInt(2) ** BigInt(256) - BigInt(1) ? Number(userPosition[2]) / 1e16 : 0; // Convert from 1e18 to percentage, handle max uint256 (infinite)
   const isLiquidatable = userPosition ? userPosition[3] : false;
 
-  const currentPrice = oraclePrice ? Number(formatEther(oraclePrice)) : 0;
+  const currentPrice = hermesPrice;
   const userEquiAssetBalance = equiAssetBalance ? formatEther(equiAssetBalance) : "0";
   const userPYUSDBalance = pyusdBalance ? formatUnits(pyusdBalance, 6) : "0";
 
@@ -239,7 +347,9 @@ const MintBurn: NextPage = () => {
                 <div className="card-glass p-8">
                   {/* Asset Info */}
                   <div className="mb-8">
-                    <label className="block text-sm font-medium text-white/70 mb-3">Asset: eTCS (TCS Stock)</label>
+                    <label className="block text-sm font-medium text-white/70 mb-3">
+                      Asset: eCORECPIIndex (United States Core Consumer Price Index)
+                    </label>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-base-300/50 rounded-lg p-4">
                         <p className="text-sm text-white/50 mb-1">Oracle Price</p>
@@ -285,12 +395,15 @@ const MintBurn: NextPage = () => {
                     <div className="space-y-6">
                       <div className="bg-info/10 border border-info/30 rounded-lg p-4 mb-4">
                         <p className="text-sm text-info">
-                          ℹ️ Minting will: (1) Approve PYUSD, (2) Deposit collateral, (3) Mint eTCS
+                          ℹ️ Minting will: (0) Update Pyth price, (1) Approve PYUSD, (2) Deposit collateral, (3) Mint
+                          eCORECPIIndex
                         </p>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-white/70 mb-3">Amount of eTCS to Mint</label>
+                        <label className="block text-sm font-medium text-white/70 mb-3">
+                          Amount of eCORECPIIndex to Mint
+                        </label>
                         <div className="relative">
                           <input
                             type="number"
@@ -302,7 +415,7 @@ const MintBurn: NextPage = () => {
                             className="w-full bg-base-300 border border-white/20 rounded-lg px-4 py-4 text-white text-xl focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 font-medium">
-                            eTCS
+                            eCORECPIIndex
                           </span>
                         </div>
                       </div>
@@ -339,7 +452,7 @@ const MintBurn: NextPage = () => {
                         disabled={isProcessing || !mintAmount || parseFloat(mintAmount) <= 0}
                         className="w-full btn btn-primary text-white py-4 text-lg rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isProcessing ? "Processing..." : "Mint eTCS"}
+                        {isProcessing ? "Processing..." : "Mint eCORECPIIndex"}
                       </button>
                     </div>
                   )}
@@ -348,7 +461,9 @@ const MintBurn: NextPage = () => {
                   {activeTab === "burn" && (
                     <div className="space-y-6">
                       <div>
-                        <label className="block text-sm font-medium text-white/70 mb-3">Amount of eTCS to Burn</label>
+                        <label className="block text-sm font-medium text-white/70 mb-3">
+                          Amount of eCORECPIIndex to Burn
+                        </label>
                         <div className="relative">
                           <input
                             type="number"
@@ -360,11 +475,11 @@ const MintBurn: NextPage = () => {
                             className="w-full bg-base-300 border border-white/20 rounded-lg px-4 py-4 text-white text-xl focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 font-medium">
-                            eTCS
+                            eCORECPIIndex
                           </span>
                         </div>
                         <p className="text-xs text-white/50 mt-2">
-                          Available: {parseFloat(userEquiAssetBalance).toFixed(4)} eTCS
+                          Available: {parseFloat(userEquiAssetBalance).toFixed(4)} eCORECPIIndex
                         </p>
                       </div>
 
@@ -388,7 +503,7 @@ const MintBurn: NextPage = () => {
                         disabled={isProcessing || !burnAmount || parseFloat(burnAmount) <= 0}
                         className="w-full btn btn-primary text-white py-4 text-lg rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isProcessing ? "Processing..." : "Burn eTCS"}
+                        {isProcessing ? "Processing..." : "Burn eCORECPIIndex"}
                       </button>
                     </div>
                   )}
@@ -409,17 +524,17 @@ const MintBurn: NextPage = () => {
                     </div>
 
                     <div>
-                      <p className="text-sm text-white/50 mb-2">Minted eTCS</p>
+                      <p className="text-sm text-white/50 mb-2">Minted eCORECPIIndex</p>
                       <p className="text-3xl font-bold">
-                        {parseFloat(userDebt).toFixed(4)} <span className="text-lg text-white/50">eTCS</span>
+                        {parseFloat(userDebt).toFixed(4)} <span className="text-lg text-white/50">eCORECPIIndex</span>
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-sm text-white/50 mb-2">eTCS Balance</p>
+                      <p className="text-sm text-white/50 mb-2">eCORECPIIndex Balance</p>
                       <p className="text-2xl font-bold">
                         {parseFloat(userEquiAssetBalance).toFixed(4)}{" "}
-                        <span className="text-base text-white/50">eTCS</span>
+                        <span className="text-base text-white/50">eCORECPIIndex</span>
                       </p>
                     </div>
 

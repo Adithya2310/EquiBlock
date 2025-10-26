@@ -1013,7 +1013,7 @@ const deployedContracts = {
   },
   11155111: {
     EquiAsset: {
-      address: "0x52ffC282dd621f18edD1aeba5557bE839d0793f9",
+      address: "0xc49B7f883d0A511f59dA4cA019b604dF76D9F986",
       abi: [
         {
           inputs: [],
@@ -1479,10 +1479,10 @@ const deployedContracts = {
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",
       },
-      deployedOnBlock: 9492420,
+      deployedOnBlock: 9494521,
     },
     EquiPool: {
-      address: "0x054EA4a22CD6e9ef5024dd9AB5564BBC623012a4",
+      address: "0x491c1F1931A24E75a337291A72a8dd89E315bf88",
       abi: [
         {
           inputs: [
@@ -1769,10 +1769,10 @@ const deployedContracts = {
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",
       },
-      deployedOnBlock: 9492423,
+      deployedOnBlock: 9494524,
     },
     EquiVault: {
-      address: "0x1cFeB1A2F739f49C25bc6A1F00d9E8659A26d0e6",
+      address: "0xd75C8b284E13ecA6CEA82b95730e2bC3150d8751",
       abi: [
         {
           inputs: [
@@ -2224,10 +2224,10 @@ const deployedContracts = {
         renounceOwnership: "@openzeppelin/contracts/access/Ownable.sol",
         transferOwnership: "@openzeppelin/contracts/access/Ownable.sol",
       },
-      deployedOnBlock: 9492419,
+      deployedOnBlock: 9494520,
     },
     PythOracle: {
-      address: "0x418651ffC70fEE535299b9d62153638643d31fa3",
+      address: "0xd4f00FB9CB47366535c0eE4Eaa21E70C6DE8a87c",
       abi: [
         {
           inputs: [
@@ -2278,6 +2278,38 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "getPriceId",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes[]",
+              name: "pythPriceUpdate",
+              type: "bytes[]",
+            },
+          ],
+          name: "getUpdateFee",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "bytes[]",
@@ -2292,7 +2324,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 9492418,
+      deployedOnBlock: 9494519,
     },
   },
 } as const;

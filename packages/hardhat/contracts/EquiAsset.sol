@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract EquiAsset is ERC20, Ownable {
     address public vault;
 
-    constructor() ERC20("EquiAsset TCS", "eTCS") Ownable(msg.sender) {}
+    constructor() ERC20("United States Core Consumer Price Index", "eCORECPIIndex") Ownable(msg.sender) {}
 
     modifier onlyVault() {
         require(msg.sender == vault, "Only Vault");

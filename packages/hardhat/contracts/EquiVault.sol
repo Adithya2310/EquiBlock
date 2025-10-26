@@ -8,7 +8,7 @@ import "./PythOracle.sol";
 
 contract EquiVault is Ownable {
     IERC20 public pyUSD;               // Collateral token
-    EquiAsset public equiAsset;        // Synthetic asset (eTCS)
+    EquiAsset public equiAsset;        // Synthetic asset (eCORECPIIndex)
     PythOracle public oracle;          // Mock price oracle
 
     uint256 public constant COLLATERAL_RATIO = 500; // 500%
@@ -48,7 +48,7 @@ contract EquiVault is Ownable {
     }
 
     // --------------------------
-    // 2. Mint EquiAsset (eTCS)
+    // 2. Mint EquiAsset (eCORECPIIndex)
     // --------------------------
     function mintEquiAsset(uint256 amountToMint) external {
         require(amountToMint > 0, "Invalid mint amount");
